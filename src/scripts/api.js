@@ -2,10 +2,10 @@
 
 var config = require('./config'),
   json = require('json3'),
-  redis = require('redis'),
+  // redis = require('redis'),
   _ = require('underscore'),
   dateformat = require('dateformat'),
-  client = redis.createClient(),
+  // client = redis.createClient(),
   log4js = require('log4js');
 
 module.exports = (function () {
@@ -16,7 +16,7 @@ module.exports = (function () {
 
       res.status(200).json({
         "query":{
-          "text": "question"
+          "text": req.body.text
         },
         "status": 200,
         "type": "article-list",
