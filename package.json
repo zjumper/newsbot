@@ -8,6 +8,7 @@
   "dependencies": {
     "body-parser": "*",
     "dateformat": "^2.0.0",
+    "elasticsearch": "^12.1.3",
     "express": "^4.12",
     "express-session": "^1.7.6",
     "json3": "^3.3.2",
