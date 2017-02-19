@@ -13,60 +13,67 @@ var config = require('./config'),
   }),
   log4js = require('log4js');
 
+function extractArticle(source) {
+  var article = {};
+  article.title = source.news_Title;
+  article.url = source.news_URL;
+  article.time = source.news_Time;
+  article.abstract = "...";
+  return article;
+}
+
 module.exports = (function () {
   var logger = log4js.getLogger('normal');
   return {
     ask: function(req, res) {
-
+      logger.info(req.body);
+      var question = req.body.text;
+      if(question == undefined)
+        question = "question";
       es.search({
         index: 'newsminer_v5.1_index',
         type: 'news',
         // q: 'news_Title:理财'
         body: {
           query: {
-            match: {
-              news_Title: '理财'
+            bool: {
+              must: [{
+                query_string:{
+                  default_field: "news.news_Title",
+                  query: question
+                }
+              }],
+              must_not: [],
+              should: []
             }
-          }
+          },
+          size: config.news.result_size
         }
-      }).then(function(res) {
-        var news = res.hits.hits[0]._source;
-        logger.info(news.news_Title);
+      }).then(function(searchResult) {
+        var hits = searchResult.hits.hits;
+        var articles = [];
+        for(var i = 0; i < hits.length; i ++) {
+          var article = extractArticle(hits[i]._source);
+          articles.push(article);
+        }
+        // logger.info(news.news_Title);
+        res.status(200).json({
+          "query":{
+            "text": question
+          },
+          "status": 200,
+          "type": "article-list",
+          "data": articles
+        });
       }, function(err) {
         logger.err(err.message);
-      });
-
-      logger.info(req.body);
-      var question = req.body.text;
-      if(question == undefined)
-        question = "question";
-
-      res.status(200).json({
-        "query":{
-          "text": question
-        },
-        "status": 200,
-        "type": "article-list",
-        "data": [
-          {
-            "title": "新闻标题",
-            "url": "原文url",
-            "time": "文章时间",
-            "abstract": "内容摘要"
+        res.status(500).json({
+          "query":{
+            "text": question
           },
-          {
-            "title": "新闻标题",
-            "url": "原文url",
-            "time": "文章时间",
-            "abstract": "内容摘要"
-          },
-          {
-            "title": "新闻标题",
-            "url": "原文url",
-            "time": "文章时间",
-            "abstract": "内容摘要"
-          }
-        ]
+          "status": 500,
+          "error": err.message
+        });
       });
     }
   };
