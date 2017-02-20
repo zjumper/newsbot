@@ -47,6 +47,10 @@ module.exports = (function () {
               should: []
             }
           },
+          sort: [
+            {"news.news_Title": "desc"},
+            "_score"
+          ],
           size: config.news.result_size
         }
       }).then(function(searchResult) {
