@@ -33,7 +33,7 @@ function searchArticleByWord(query, response) {
   if(question == undefined)
     question = "question";
   es.search({
-    index: 'newsminer_v5.1_index',
+    index: config.es.index,
     type: 'news',
     // q: 'news_Title:理财'
     body: {
@@ -53,7 +53,7 @@ function searchArticleByWord(query, response) {
         {"news.news_Time": "desc"},
         "_score"
       ],
-      size: config.news.result_size
+      size: config.es.size
     }
   }).then(function(searchResult) {
     var hits = searchResult.hits.hits;
@@ -95,7 +95,7 @@ function statisticTopicTrend(query, response) {
   if(question == undefined)
     question = "question";
   es.search({
-    index: 'newsminer_v5.1_index',
+    index: config.es.index,
     type: 'topic',
     // q: 'news_Title:理财'
     body: {
@@ -115,7 +115,7 @@ function statisticTopicTrend(query, response) {
         {"topic.producedTime": "desc"},
         "_score"
       ],
-      size: config.news.result_size
+      size: config.es.size
     }
   }).then(function(searchResult) {
     logger.info(searchResult.hits.total);
@@ -155,57 +155,114 @@ function statisticTopicTrend(query, response) {
 }
 
 /**
- * 问题3
+ * 问题3,10
  */
 function searchHotTopic(query, response) {
   logger.info('searchHotTopic');
-  response.status(200).json({
-    "query":
-    {
-      "text": "【Xx】年两会最热的话题是什么？"
-    },
-    "status": 200,
-    "error": "错误信息",
-    "type":"topic-list",
-    "data":[
-      {
-        "label": "雾霾治理",
-        "count": 23,
-        "articles":[
-          {
-            "title": "新闻标题",
-            "url": "原文url",
-            "time": "文章时间",
-            "abstract": "内容摘要"
-          },
-          {
-            "title": "新闻标题",
-            "url": "原文url",
-            "time": "文章时间",
-            "abstract": "内容摘要"
-          }
-        ]
+  var question = query.text;
+  if(question == undefined)
+    question = "question";
+  es.search({
+    index: config.es.index,
+    type: 'topic',
+    // q: 'news_Title:理财'
+    body: {
+      query: {
+        match_all: {}
       },
-      {
-        "label": "延迟退休",
-        "count": 18,
-        "articles":[
-          {
-            "title": "新闻标题",
-            "url": "原文url",
-            "time": "文章时间",
-            "abstract": "内容摘要"
-          },
-          {
-            "title": "新闻标题",
-            "url": "原文url",
-            "time": "文章时间",
-            "abstract": "内容摘要"
-          }
-        ]
+      sort: [
+        {"topic.topic_ID": "desc"},
+        "_score"
+      ],
+      size: config.es.size
+    }
+  }).then(function(searchResult) {
+    // logger.info(searchResult.hits.total);
+    var hits = searchResult.hits.hits;
+    var topics = [];
+    for(var i = 0; i < hits.length; i ++) {
+      var topic = {};
+      topic.label = hits[i]._source.topic_Label;
+      topic.count = hits[i]._source.newsList.length;
+      topic.articles = [];
+      for(var j = 0; j < hits[i]._source.newsList.length; j ++) {
+        var a = {};
+        a.title = hits[i]._source.newsList[j].news_Title;
+        a.url = hits[i]._source.newsList[j].news_URL;
+        a.time = hits[i]._source.newsList[j].news_Time;
+        a.abstract = "...";
+        topic.articles.push(a);
       }
-    ]
+      topics.push(topic);
+    }
+    var ret = {
+      "query":{
+        "text": question
+      },
+      "status": 200,
+      "type": "topic-list",
+      "data": topics
+    };
+    logger.info(ret);
+    response.status(200).json(ret);
+  }, function(err) {
+    logger.err(err.message);
+    var ret = {
+      "query":{
+        "text": question
+      },
+      "status": 500,
+      "error": err.message
+    };
+    response.status(500).json(ret);
   });
+  // response.status(200).json({
+  //   "query":
+  //   {
+  //     "text": "【Xx】年两会最热的话题是什么？"
+  //   },
+  //   "status": 200,
+  //   "error": "错误信息",
+  //   "type":"topic-list",
+  //   "data":[
+  //     {
+  //       "label": "雾霾治理",
+  //       "count": 23,
+  //       "articles":[
+  //         {
+  //           "title": "新闻标题",
+  //           "url": "原文url",
+  //           "time": "文章时间",
+  //           "abstract": "内容摘要"
+  //         },
+  //         {
+  //           "title": "新闻标题",
+  //           "url": "原文url",
+  //           "time": "文章时间",
+  //           "abstract": "内容摘要"
+  //         }
+  //       ]
+  //     },
+  //     {
+  //       "label": "延迟退休",
+  //       "count": 18,
+  //       "articles":[
+  //         {
+  //           "title": "新闻标题",
+  //           "url": "原文url",
+  //           "time": "文章时间",
+  //           "abstract": "内容摘要"
+  //         },
+  //         {
+  //           "title": "新闻标题",
+  //           "url": "原文url",
+  //           "time": "文章时间",
+  //           "abstract": "内容摘要"
+  //         }
+  //       ]
+  //     }
+  //   ]
+  // });
 }
 
 /**
@@ -404,7 +461,7 @@ function searchArticleByPer(query, response) {
 
 /**
  * 问题10
- */
+
 function searchHotTopic(query, response) {
   logger.info('searchHotTopic');
   response.status(200).json({
@@ -454,7 +511,7 @@ function searchHotTopic(query, response) {
       }
     ]
   });
-}
+} */
 
 /**
  * 问题11
