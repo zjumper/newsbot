@@ -216,53 +216,6 @@ function searchHotTopic(query, response) {
     };
     response.status(500).json(ret);
   });
-  // response.status(200).json({
-  //   "query":
-  //   {
-  //     "text": "【Xx】年两会最热的话题是什么？"
-  //   },
-  //   "status": 200,
-  //   "error": "错误信息",
-  //   "type":"topic-list",
-  //   "data":[
-  //     {
-  //       "label": "雾霾治理",
-  //       "count": 23,
-  //       "articles":[
-  //         {
-  //           "title": "新闻标题",
-  //           "url": "原文url",
-  //           "time": "文章时间",
-  //           "abstract": "内容摘要"
-  //         },
-  //         {
-  //           "title": "新闻标题",
-  //           "url": "原文url",
-  //           "time": "文章时间",
-  //           "abstract": "内容摘要"
-  //         }
-  //       ]
-  //     },
-  //     {
-  //       "label": "延迟退休",
-  //       "count": 18,
-  //       "articles":[
-  //         {
-  //           "title": "新闻标题",
-  //           "url": "原文url",
-  //           "time": "文章时间",
-  //           "abstract": "内容摘要"
-  //         },
-  //         {
-  //           "title": "新闻标题",
-  //           "url": "原文url",
-  //           "time": "文章时间",
-  //           "abstract": "内容摘要"
-  //         }
-  //       ]
-  //     }
-  //   ]
-  // });
 }
 
 /**
@@ -460,66 +413,34 @@ function searchArticleByPer(query, response) {
 }
 
 /**
- * 问题10
-
-function searchHotTopic(query, response) {
-  logger.info('searchHotTopic');
-  response.status(200).json({
-    "query":
-    {
-      "text": "【Xx】年两会最热的话题是什么？"
-    },
-    "status": 200,
-    "error": "错误信息",
-    "type":"topic-list",
-    "data":[
-      {
-        "label": "雾霾治理",
-        "count": 23,
-        "articles":[
-          {
-            "title": "新闻标题",
-            "url": "原文url",
-            "time": "文章时间",
-            "abstract": "内容摘要"
-          },
-          {
-            "title": "新闻标题",
-            "url": "原文url",
-            "time": "文章时间",
-            "abstract": "内容摘要"
-          }
-        ]
-      },
-      {
-        "label": "延迟退休",
-        "count": 18,
-        "articles":[
-          {
-            "title": "新闻标题",
-            "url": "原文url",
-            "time": "文章时间",
-            "abstract": "内容摘要"
-          },
-          {
-            "title": "新闻标题",
-            "url": "原文url",
-            "time": "文章时间",
-            "abstract": "内容摘要"
-          }
-        ]
-      }
-    ]
-  });
-} */
-
-/**
  * 问题11
  * 问题12
  */
 function searchPerson(query, response) {
   logger.info('searchPerson');
-  response.status(200).json({});
+  response.status(200).json({
+    "fullname": "姓名",
+    "age": 45,
+    "gender": "性别",
+    "nation": "民族",
+    "birthdate": "出生日期",
+    "birthplace": "出生地",
+    "occupation": "职业",
+    "title": "职务",
+    "party": "党派",
+    "delegation": "代表团",
+    "education": "学历",
+    "degree": "学位",
+    "college": "毕业院校",
+    "major": "专业",
+    "award": "获得荣誉",
+    "achivement": "成就",
+    "spouse": "配偶",
+    "photo": "照片",
+    "domain": "界别",
+    "cppcc": 0,
+    "npc": 1
+  });
 }
 
 /**
@@ -581,7 +502,31 @@ function searchTopicByWord(query, response) {
  */
 function statisticPer(query, response) {
   logger.info('statisticPer');
-  response.status(200).json({});
+  response.status(200).json({
+    "axis": "age",
+    "data": [
+      {
+        "x": "30-40",
+        "y": 23
+      },
+      {
+        "x": "40-50",
+        "y": 334
+      },
+      {
+        "x": "50-60",
+        "y": 634
+      },
+      {
+        "x": "60-70",
+        "y": 34
+      },
+      {
+        "x": "70-",
+        "y": 10
+      }
+    ]
+  });
 }
 
 /**
