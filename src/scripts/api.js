@@ -16,11 +16,13 @@ var config = require('./config'),
 var logger = log4js.getLogger('normal');
 
 function extractArticle(source) {
+  // logger.info(source);
   var article = {};
-  article.title = source.news_Title;
-  article.url = source.news_URL;
-  article.time = source.news_Time;
-  article.abstract = "...";
+  // logger.info(source.title);
+  article.title = source.title;
+  article.url = source.url;
+  article.time = source.time;
+  article.abstract = source.content.substring(0, 100);
   return article;
 }
 
@@ -40,9 +42,10 @@ function searchArticleByWord(query, response) {
       query: {
         bool: {
           must: [{
-            query_string:{
-              default_field: "news.news_Title",
-              query: question
+            term:{
+              //default_field: "news.title",
+              //query: question
+              "news.title": question
             }
           }],
           must_not: [],
@@ -50,7 +53,7 @@ function searchArticleByWord(query, response) {
         }
       },
       sort: [
-        {"news.news_Time": "desc"},
+        {"news.time": "desc"},
         "_score"
       ],
       size: config.es.size
@@ -60,6 +63,7 @@ function searchArticleByWord(query, response) {
     var articles = [];
     for(var i = 0; i < hits.length; i ++) {
       var article = extractArticle(hits[i]._source);
+      // logger.info(article);
       articles.push(article);
     }
     // logger.info(news.news_Title);
@@ -71,7 +75,7 @@ function searchArticleByWord(query, response) {
       "type": "article-list",
       "data": articles
     };
-    logger.info(ret);
+    // logger.info(ret);
     response.status(200).json(ret);
   }, function(err) {
     logger.err(err.message);
@@ -103,7 +107,7 @@ function statisticTopicTrend(query, response) {
         bool: {
           must: [{
             query_string: {
-              default_field: "topic.topic_Label", //'topic.label' in feature indeed
+              default_field: "topic.label", //'topic.label' in feature indeed
               query: question
             }
           }],
@@ -112,7 +116,7 @@ function statisticTopicTrend(query, response) {
         }
       },
       sort: [
-        {"topic.producedTime": "desc"},
+        {"topic.updated": "desc"},
         "_score"
       ],
       size: config.es.size
@@ -120,9 +124,9 @@ function statisticTopicTrend(query, response) {
   }).then(function(searchResult) {
     logger.info(searchResult.hits.total);
     var topic = searchResult.hits.hits[0]._source;
-    var articles = topic.newsList; //'topic.articles'
+    var articles = topic.articles; //'topic.articles'
     // group articles by date
-    var data = _.countBy(articles, function(news) { return news.news_Time.substring(0,8); }); //{date: count}
+    var data = _.countBy(articles, function(news) { return news.time.substring(0,10); }); //{date: count}
     var resort = [];
     var keys = _.keys(data);
     var values = _.values(data);
@@ -171,7 +175,7 @@ function searchHotTopic(query, response) {
         match_all: {}
       },
       sort: [
-        {"topic.topic_ID": "desc"},
+        {"topic.count": "desc"},
         "_score"
       ],
       size: config.es.size
@@ -182,14 +186,14 @@ function searchHotTopic(query, response) {
     var topics = [];
     for(var i = 0; i < hits.length; i ++) {
       var topic = {};
-      topic.label = hits[i]._source.topic_Label;
-      topic.count = hits[i]._source.newsList.length;
+      topic.label = hits[i]._source.label;
+      topic.count = hits[i]._source.articles.length;
       topic.articles = [];
-      for(var j = 0; j < hits[i]._source.newsList.length; j ++) {
+      for(var j = 0; j < hits[i]._source.articles.length; j ++) {
         var a = {};
-        a.title = hits[i]._source.newsList[j].news_Title;
-        a.url = hits[i]._source.newsList[j].news_URL;
-        a.time = hits[i]._source.newsList[j].news_Time;
+        a.title = hits[i]._source.articles[j].title;
+        a.url = hits[i]._source.articles[j].url;
+        a.time = hits[i]._source.articles[j].time;
         a.abstract = "...";
         topic.articles.push(a);
       }
@@ -223,24 +227,64 @@ function searchHotTopic(query, response) {
  */
 function searchHotPer(query, response) {
   logger.info('searchHotPer');
-  response.status(200).json({
-    "query":
-    {
-      "text": "【Xx】年两会最受媒体关注的委员都有谁？"
-    },
-    "status": 200,
-    "error": "错误信息",
-    "type":"per-list",
-    "data":[
-      {
-        "name": "习近平",
-        "count": 252
+  var question = query.text;
+  if(question == undefined)
+    question = "question";
+  es.search({
+    index: config.es.index,
+    type: 'topic',
+    // q: 'news_Title:理财'
+    body: {
+      query: {
+        match_all: {}
       },
-      {
-        "name": "李克强",
-        "count": 192
+      sort: [
+        {"topic.count": "desc"},
+        "_score"
+      ],
+      size: config.es.size
+    }
+  }).then(function(searchResult) {
+    var hits = searchResult.hits.hits;
+    var p = [];
+    var count = [];
+    for(var i = 0; i < hits.length; i ++) {
+      var topic = hits[i]._source;
+      for(var j = 0; j < topic.entities.person.length; j ++) {
+        var index = _.indexOf(p, topic.entities.person[j]);
+        if(index > -1) {
+          // logger.info(topic.entities.person[j]);
+          count[index] = count[index] + topic.count;
+        } else {
+          p.push(topic.entities.person[j]);
+          count.push(topic.count);
+        }
       }
-    ]
+    }
+    var percount = [];
+    for(var i = 0; i < p.length; i++) {
+      percount.push({name: p[i], count: count[i]})
+    }
+    percount = _.sortBy(percount, "count").reverse().slice(0, 3);
+    var ret = {
+      "query":{
+        "text": question
+      },
+      "status": 200,
+      "type": "per-list",
+      "data": percount
+    };
+    response.status(200).json(ret);
+  }, function(err) {
+    logger.err(err.message);
+    var ret = {
+      "query":{
+        "text": question
+      },
+      "status": 500,
+      "error": err.message
+    };
+    response.status(500).json(ret);
   });
 }
 
@@ -249,24 +293,63 @@ function searchHotPer(query, response) {
  */
 function searchHotOrg(query, response) {
   logger.info('searchHotOrg');
-  response.status(200).json({
-    "query":
-    {
-      "text": "【Xx】年两会上提到最多的单位或机构都有哪些？"
-    },
-    "status": 200,
-    "error": "错误信息",
-    "type":"org-list",
-    "data":[
-      {
-        "name": "环保部",
-        "count": 252
+  var question = query.text;
+  if(question == undefined)
+    question = "question";
+  es.search({
+    index: config.es.index,
+    type: 'topic',
+    // q: 'news_Title:理财'
+    body: {
+      query: {
+        match_all: {}
       },
-      {
-        "name": "住建部",
-        "count": 192
+      sort: [
+        {"topic.count": "desc"},
+        "_score"
+      ],
+      size: config.es.size
+    }
+  }).then(function(searchResult) {
+    var hits = searchResult.hits.hits;
+    var p = [];
+    var count = [];
+    for(var i = 0; i < hits.length; i ++) {
+      var topic = hits[i]._source;
+      for(var j = 0; j < topic.entities.organization.length; j ++) {
+        var index = _.indexOf(p, topic.entities.organization[j]);
+        if(index > -1) {
+          count[index] += topic.count;
+        } else {
+          p.push(topic.entities.organization[j]);
+          count.push(topic.count);
+        }
       }
-    ]
+    }
+    var percount = [];
+    for(var i = 0; i < p.length; i++) {
+      percount.push({name: p[i], count: count[i]})
+    }
+    percount = _.sortBy(percount, "count").reverse().slice(0, 3);
+    var ret = {
+      "query":{
+        "text": question
+      },
+      "status": 200,
+      "type": "org-list",
+      "data": percount
+    };
+    response.status(200).json(ret);
+  }, function(err) {
+    logger.err(err.message);
+    var ret = {
+      "query":{
+        "text": question
+      },
+      "status": 500,
+      "error": err.message
+    };
+    response.status(500).json(ret);
   });
 }
 
@@ -275,24 +358,63 @@ function searchHotOrg(query, response) {
  */
 function searchHotLoc(query, response) {
   logger.info('searchHotLoc');
-  response.status(200).json({
-    "query":
-    {
-      "text": "【xx】年两会上提到最多的【省会城市】是哪些？"
-    },
-    "status": 200,
-    "error": "错误信息",
-    "type":"loc-list",
-    "data":[
-      {
-        "name": "北京",
-        "count": 252
+  var question = query.text;
+  if(question == undefined)
+    question = "question";
+  es.search({
+    index: config.es.index,
+    type: 'topic',
+    // q: 'news_Title:理财'
+    body: {
+      query: {
+        match_all: {}
       },
-      {
-        "name": "广州",
-        "count": 192
+      sort: [
+        {"topic.count": "desc"},
+        "_score"
+      ],
+      size: config.es.size
+    }
+  }).then(function(searchResult) {
+    var hits = searchResult.hits.hits;
+    var p = [];
+    var count = [];
+    for(var i = 0; i < hits.length; i ++) {
+      var topic = hits[i]._source;
+      for(var j = 0; j < topic.entities.location.length; j ++) {
+        var index = _.indexOf(p, topic.entities.location[j]);
+        if(index > -1) {
+          count[index] += topic.count;
+        } else {
+          p.push(topic.entities.location[j]);
+          count.push(topic.count);
+        }
       }
-    ]
+    }
+    var percount = [];
+    for(var i = 0; i < p.length; i++) {
+      percount.push({name: p[i], count: count[i]})
+    }
+    percount = _.sortBy(percount, "count").reverse().slice(0, 3);
+    var ret = {
+      "query":{
+        "text": question
+      },
+      "status": 200,
+      "type": "loc-list",
+      "data": percount
+    };
+    response.status(200).json(ret);
+  }, function(err) {
+    logger.err(err.message);
+    var ret = {
+      "query":{
+        "text": question
+      },
+      "status": 500,
+      "error": err.message
+    };
+    response.status(500).json(ret);
   });
 }
 
@@ -301,52 +423,71 @@ function searchHotLoc(query, response) {
  */
 function searchTopicByPer(query, response) {
   logger.info('searchTopicByPer');
-  response.status(200).json({
-    "query":
-    {
-      "text": "【Xx】年两会最热的话题是什么？"
-    },
-    "status": 200,
-    "error": "错误信息",
-    "type":"topic-list",
-    "data":[
-      {
-        "label": "雾霾治理",
-        "count": 23,
-        "articles":[
-          {
-            "title": "新闻标题",
-            "url": "原文url",
-            "time": "文章时间",
-            "abstract": "内容摘要"
-          },
-          {
-            "title": "新闻标题",
-            "url": "原文url",
-            "time": "文章时间",
-            "abstract": "内容摘要"
-          }
-        ]
+  var question = query.text;
+  if(question == undefined)
+    question = "question";
+  es.search({
+    index: config.es.index,
+    type: 'topic',
+    // q: 'news_Title:理财'
+    body: {
+      query: {
+        bool: {
+          must: [{
+            term: {
+              "topic.entities.person": question
+            }
+          }],
+          must_not: [],
+          should: []
+        }
       },
-      {
-        "label": "延迟退休",
-        "count": 18,
-        "articles":[
-          {
-            "title": "新闻标题",
-            "url": "原文url",
-            "time": "文章时间",
-            "abstract": "内容摘要"
-          },
-          {
-            "title": "新闻标题",
-            "url": "原文url",
-            "time": "文章时间",
-            "abstract": "内容摘要"
-          }
-        ]
+      sort: [
+        {"topic.count": "desc"},
+        {"topic.updated": "desc"},
+        "_score"
+      ],
+      size: config.es.size
+    }
+  }).then(function(searchResult) {
+    logger.info(searchResult.hits.total);
+    var hits = searchResult.hits.hits;
+    var topics = [];
+    for(var i = 0; i < hits.length; i ++) {
+      var topic = {};
+      topic.label = hits[i]._source.label;
+      topic.count = hits[i]._source.articles.length;
+      topic.articles = [];
+      for(var j = 0; j < hits[i]._source.articles.length; j ++) {
+        var a = {};
+        a.title = hits[i]._source.articles[j].title;
+        a.url = hits[i]._source.articles[j].url;
+        a.time = hits[i]._source.articles[j].time;
+        a.abstract = "...";
+        topic.articles.push(a);
       }
-    ]
+      topics.push(topic);
+    }
+    var ret = {
+      "query":{
+        "text": question
+      },
+      "status": 200,
+      "type": "topic-list",
+      "data": topics
+    };
+    logger.info(ret);
+    response.status(200).json(ret);
+  }, function(err) {
+    logger.err(err.message);
+    var ret = {
+      "query":{
+        "text": question
+      },
+      "status": 500,
+      "error": err.message
+    };
+    response.status(500).json(ret);
   });
 }
 
@@ -381,34 +522,62 @@ function searchPerByParty(query, response) {
  */
 function searchArticleByPer(query, response) {
   logger.info('searchArticleByPer');
-  response.status(200).json({
-    "query":
-    {
-      "text": "【雾霾治理】相关议题最早是什么时候提出的？"
-    },
-    "status": 200,      /* 200正常，其他为错误 */
-    "error": "错误信息",
-    "type":"article-list", /* 说明结果数据的类型，有限枚举值 */
-    "data":[
-      {
-        "title": "新闻标题",
-        "url": "原文url",
-        "time": "文章时间",
-        "abstract": "内容摘要"
+  var question = query.text;
+  if(question == undefined)
+    question = "question";
+  es.search({
+    index: config.es.index,
+    type: 'news',
+    // q: 'news_Title:理财'
+    body: {
+      query: {
+        bool: {
+          must: [{
+            term:{
+              //default_field: "news.title",
+              //query: question
+              "news.persons": question
+            }
+          }],
+          must_not: [],
+          should: []
+        }
       },
-      {
-        "title": "新闻标题",
-        "url": "原文url",
-        "time": "文章时间",
-        "abstract": "内容摘要"
+      sort: [
+        {"news.time": "desc"},
+        "_score"
+      ],
+      size: config.es.size
+    }
+  }).then(function(searchResult) {
+    var hits = searchResult.hits.hits;
+    var articles = [];
+    for(var i = 0; i < hits.length; i ++) {
+      var article = extractArticle(hits[i]._source);
+      // logger.info(article);
+      articles.push(article);
+    }
+    // logger.info(news.news_Title);
+    var ret = {
+      "query":{
+        "text": question
       },
-      {
-        "title": "新闻标题",
-        "url": "原文url",
-        "time": "文章时间",
-        "abstract": "内容摘要"
-      }
-    ]
+      "status": 200,
+      "type": "article-list",
+      "data": articles
+    };
+    // logger.info(ret);
+    response.status(200).json(ret);
+  }, function(err) {
+    logger.err(err.message);
+    var ret = {
+      "query":{
+        "text": question
+      },
+      "status": 500,
+      "error": err.message
+    };
+    response.status(500).json(ret);
   });
 }
 
@@ -448,52 +617,72 @@ function searchPerson(query, response) {
  */
 function searchTopicByWord(query, response) {
   logger.info('searchTopicByWord');
-  response.status(200).json({
-    "query":
-    {
-      "text": "【Xx】年两会最热的话题是什么？"
-    },
-    "status": 200,
-    "error": "错误信息",
-    "type":"topic-list",
-    "data":[
-      {
-        "label": "雾霾治理",
-        "count": 23,
-        "articles":[
-          {
-            "title": "新闻标题",
-            "url": "原文url",
-            "time": "文章时间",
-            "abstract": "内容摘要"
-          },
-          {
-            "title": "新闻标题",
-            "url": "原文url",
-            "time": "文章时间",
-            "abstract": "内容摘要"
-          }
-        ]
+  var question = query.text;
+  if(question == undefined)
+    question = "question";
+  es.search({
+    index: config.es.index,
+    type: 'topic',
+    // q: 'news_Title:理财'
+    body: {
+      query: {
+        bool: {
+          must: [{
+            query_string:{
+              default_field: "topic.label",
+              query: question
+              // "topic.label": question
+            }
+          }],
+          must_not:[],
+          should:[]
+        }
       },
-      {
-        "label": "延迟退休",
-        "count": 18,
-        "articles":[
-          {
-            "title": "新闻标题",
-            "url": "原文url",
-            "time": "文章时间",
-            "abstract": "内容摘要"
-          },
-          {
-            "title": "新闻标题",
-            "url": "原文url",
-            "time": "文章时间",
-            "abstract": "内容摘要"
-          }
-        ]
+      sort: [
+        "_score",
+        {"topic.count": "desc"}
+      ],
+      size: config.es.size
+    }
+  }).then(function(searchResult) {
+    logger.info(searchResult.hits.total);
+    var hits = searchResult.hits.hits;
+    var topics = [];
+    for(var i = 0; i < hits.length; i ++) {
+      var topic = {};
+      topic.label = hits[i]._source.label;
+      topic.count = hits[i]._source.articles.length;
+      topic.articles = [];
+      for(var j = 0; j < hits[i]._source.articles.length; j ++) {
+        var a = {};
+        a.title = hits[i]._source.articles[j].title;
+        a.url = hits[i]._source.articles[j].url;
+        a.time = hits[i]._source.articles[j].time;
+        a.abstract = "...";
+        topic.articles.push(a);
       }
-    ]
+      topics.push(topic);
+    }
+    var ret = {
+      "query":{
+        "text": question
+      },
+      "status": 200,
+      "type": "topic-list",
+      "data": topics
+    };
+    logger.info(ret);
+    response.status(200).json(ret);
+  }, function(err) {
+    logger.err(err.message);
+    var ret = {
+      "query":{
+        "text": question
+      },
+      "status": 500,
+      "error": err.message
+    };
+    response.status(500).json(ret);
   });
 }
 
@@ -530,64 +719,21 @@ function statisticPer(query, response) {
 }
 
 /**
- * 问题15
- */
-function searchTopicByPer(query, response) {
-  logger.info('searchTopicByPer');
-  response.status(200).json({
-    "query":
-    {
-      "text": "【Xx】年两会最热的话题是什么？"
-    },
-    "status": 200,
-    "error": "错误信息",
-    "type":"topic-list",
-    "data":[
-      {
-        "label": "雾霾治理",
-        "count": 23,
-        "articles":[
-          {
-            "title": "新闻标题",
-            "url": "原文url",
-            "time": "文章时间",
-            "abstract": "内容摘要"
-          },
-          {
-            "title": "新闻标题",
-            "url": "原文url",
-            "time": "文章时间",
-            "abstract": "内容摘要"
-          }
-        ]
-      },
-      {
-        "label": "延迟退休",
-        "count": 18,
-        "articles":[
-          {
-            "title": "新闻标题",
-            "url": "原文url",
-            "time": "文章时间",
-            "abstract": "内容摘要"
-          },
-          {
-            "title": "新闻标题",
-            "url": "原文url",
-            "time": "文章时间",
-            "abstract": "内容摘要"
-          }
-        ]
-      }
-    ]
-  });
-}
-
-/**
  * 其他问题
  */
 function unsupported(query, response) {
   logger.info('unsupported');
+  var question = query.text;
+  if(question == undefined)
+    question = "question";
+  var ret = {
+    "query":{
+      "text": question
+    },
+    "status": 404,
+    "error": 'Sorry, unsupported query.'
+  };
+  response.status(404).json(ret);
 }
 
 module.exports = (function () {
