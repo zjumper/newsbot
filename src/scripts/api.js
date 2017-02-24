@@ -42,10 +42,10 @@ function searchArticleByWord(query, response) {
       query: {
         bool: {
           must: [{
-            term:{
-              //default_field: "news.title",
-              //query: question
-              "news.title": question
+            query_string:{
+              default_field: "news.title",
+              query: question
+              // "news.title": question
             }
           }],
           must_not: [],
