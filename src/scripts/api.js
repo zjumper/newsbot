@@ -189,7 +189,9 @@ function searchHotTopic(query, response) {
       topic.label = hits[i]._source.label;
       topic.count = hits[i]._source.articles.length;
       topic.articles = [];
-      for(var j = 0; j < hits[i]._source.articles.length; j ++) {
+      var len = hits[i]._source.articles.length;
+      var size = len > config.es.size ? config.es.size : len;
+      for(var j = 0; j < size; j ++) {
         var a = {};
         a.title = hits[i]._source.articles[j].title;
         a.url = hits[i]._source.articles[j].url;
