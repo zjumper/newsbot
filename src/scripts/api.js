@@ -1,6 +1,7 @@
 'use strict';
 
 var config = require('./config'),
+  npc = require('./npc'),
   json = require('json3'),
   // redis = require('redis'),
   _ = require('underscore'),
@@ -11,9 +12,13 @@ var config = require('./config'),
     host: config.es.host,
     log: 'info'
   }),
+  Segment = require('segment'),
+  segment = new Segment(),
   log4js = require('log4js');
 
 var logger = log4js.getLogger('normal');
+segment.useDefault();
+// logger.info(segment.doSegment("习近平在大会上的讲话大大地激励了同志们的热情。"));
 
 function extractArticle(source) {
   // logger.info(source);
@@ -24,6 +29,29 @@ function extractArticle(source) {
   article.time = source.time;
   article.abstract = source.content.substring(0, 100);
   return article;
+}
+
+function extractPerson(text) {
+  var words = segment.doSegment(text);
+  for(var i = 0; i < words.length; i ++) {
+    var word = words[i];
+    if(word.p === 0x0080) {// person name SEGTAG
+      return word.w;
+    }
+  }
+  return 'UNKNOWN';
+}
+
+function extractProperty(text) {
+  var words = segment.doSegment(text);
+  logger.info(words);
+  for(var i = 0; i < words.length; i ++) {
+    var word = words[i];
+    var p = _.propertyOf(config.propMap)(word.w);
+    if(p)
+      return p;
+  }
+  return 'UNKNOWN';
 }
 
 /**
@@ -428,6 +456,7 @@ function searchTopicByPer(query, response) {
   var question = query.text;
   if(question == undefined)
     question = "question";
+  var person = extractPerson(question);
   es.search({
     index: config.es.index,
     type: 'topic',
@@ -437,7 +466,7 @@ function searchTopicByPer(query, response) {
         bool: {
           must: [{
             term: {
-              "topic.entities.person": question
+              "topic.entities.person": person
             }
           }],
           must_not: [],
@@ -494,10 +523,11 @@ function searchTopicByPer(query, response) {
 }
 
 /**
- * 问题8
+ * 问题8：人大代表没有界别一说
  */
 function searchPerByParty(query, response) {
   logger.info('searchPerByParty');
+
   response.status(200).json({
     "query":
     {
@@ -527,6 +557,7 @@ function searchArticleByPer(query, response) {
   var question = query.text;
   if(question == undefined)
     question = "question";
+  var person = extractPerson(question);
   es.search({
     index: config.es.index,
     type: 'news',
@@ -538,7 +569,7 @@ function searchArticleByPer(query, response) {
             term:{
               //default_field: "news.title",
               //query: question
-              "news.persons": question
+              "news.persons": person
             }
           }],
           must_not: [],
@@ -589,29 +620,24 @@ function searchArticleByPer(query, response) {
  */
 function searchPerson(query, response) {
   logger.info('searchPerson');
-  response.status(200).json({
-    "fullname": "姓名",
-    "age": 45,
-    "gender": "性别",
-    "nation": "民族",
-    "birthdate": "出生日期",
-    "birthplace": "出生地",
-    "occupation": "职业",
-    "title": "职务",
-    "party": "党派",
-    "delegation": "代表团",
-    "education": "学历",
-    "degree": "学位",
-    "college": "毕业院校",
-    "major": "专业",
-    "award": "获得荣誉",
-    "achivement": "成就",
-    "spouse": "配偶",
-    "photo": "照片",
-    "domain": "界别",
-    "cppcc": 0,
-    "npc": 1
-  });
+  var question = query.text;
+  if(question == undefined)
+    question = "question";
+  var person = extractPerson(question);
+  logger.info(person);
+  var p = _.find(npc.people, function(p) {return p.fullname === person;});
+  if(p)
+    response.status(200).json(p);
+  else {
+    var ret = {
+      "query":{
+        "text": question
+      },
+      "status": 404,
+      "error": "NOT FOUND"
+    };
+    response.status(404).json(ret);
+  }
 }
 
 /**
@@ -693,31 +719,39 @@ function searchTopicByWord(query, response) {
  */
 function statisticPer(query, response) {
   logger.info('statisticPer');
-  response.status(200).json({
-    "axis": "age",
-    "data": [
-      {
-        "x": "30-40",
-        "y": 23
+  var question = query.text;
+  if(question == undefined)
+    question = "question";
+  var p = extractProperty(question);
+  if(p === 'UNKNOWN') {
+    var ret = {
+      "query":{
+        "text": question
       },
+      "status": 404,
+      "error": "NOT FOUND"
+    };
+    response.status(404).json(ret);
+  } else {
+    var group = _.groupBy(npc.people, p);
+    var count = [];
+    for(var p in group) {
+      var c = {};
+      c.name = p;
+      c.count = group[p].length;
+      logger.info(c);
+      count.push(c);
+    }
+    response.status(200).json({
+      "query":
       {
-        "x": "40-50",
-        "y": 334
+        "text": question
       },
-      {
-        "x": "50-60",
-        "y": 634
-      },
-      {
-        "x": "60-70",
-        "y": 34
-      },
-      {
-        "x": "70-",
-        "y": 10
-      }
-    ]
-  });
+      "status": 200,
+      "type": "per-statistic",
+      "data": count
+    });
+  }
 }
 
 /**

@@ -2,6 +2,8 @@
   "name": "newsbot",
   "version": "0.0.1",
   "description": "Online news chatbot api module.",
+  "repository": "https://github.com/zjumper/newsbot.git",
+  "license": "Apache License 2.0",
   "authors": [
     "Alex Zhang <zpjumper@gmail.com>"
   ],
@@ -14,6 +16,7 @@
     "json3": "^3.3.2",
     "log4js": "^1.0.1",
     "redis": "^2.6.3",
+    "segment": "^0.1.3",
     "underscore": "^1.8.3"
   },
   "devDependencies": {
