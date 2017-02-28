@@ -91,6 +91,8 @@ function searchArticleByWord(query, response) {
     var articles = [];
     for(var i = 0; i < hits.length; i ++) {
       var article = extractArticle(hits[i]._source);
+      // add score field to article data
+      article.score = hits[i]._score;
       // logger.info(article);
       articles.push(article);
     }
@@ -216,6 +218,7 @@ function searchHotTopic(query, response) {
       var topic = {};
       topic.label = hits[i]._source.label;
       topic.count = hits[i]._source.articles.length;
+      topic.score = hits[i]._score;
       topic.articles = [];
       var len = hits[i]._source.articles.length;
       var size = len > config.es.size ? config.es.size : len;
@@ -488,8 +491,10 @@ function searchTopicByPer(query, response) {
       var topic = {};
       topic.label = hits[i]._source.label;
       topic.count = hits[i]._source.articles.length;
+      topic.score = hits[i]._score;
       topic.articles = [];
-      for(var j = 0; j < hits[i]._source.articles.length; j ++) {
+      var size = topic.count > config.es.size ? config.es.size : topic.count;
+      for(var j = 0; j < size; j ++) {
         var a = {};
         a.title = hits[i]._source.articles[j].title;
         a.url = hits[i]._source.articles[j].url;
@@ -587,6 +592,8 @@ function searchArticleByPer(query, response) {
     var articles = [];
     for(var i = 0; i < hits.length; i ++) {
       var article = extractArticle(hits[i]._source);
+      // add score field to article data
+      article.score = hits[i]._score;
       // logger.info(article);
       articles.push(article);
     }
@@ -680,8 +687,10 @@ function searchTopicByWord(query, response) {
       var topic = {};
       topic.label = hits[i]._source.label;
       topic.count = hits[i]._source.articles.length;
+      topic.score = hits[i]._score;
+      var size = topic.count > config.es.size ? config.es.size : topic.count;
       topic.articles = [];
-      for(var j = 0; j < hits[i]._source.articles.length; j ++) {
+      for(var j = 0; j < size; j ++) {
         var a = {};
         a.title = hits[i]._source.articles[j].title;
         a.url = hits[i]._source.articles[j].url;
