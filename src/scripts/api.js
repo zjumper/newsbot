@@ -54,6 +54,17 @@ function extractProperty(text) {
   return 'UNKNOWN';
 }
 
+function extractParsed(query) {
+  var ps = query.parsed;
+  if(ps === undefined)
+    return "";
+  var str = "";
+  for(var i = 0; i < ps.length; i ++) {
+    str += " " + ps[i].label;
+  }
+  return str;
+}
+
 /**
  * 问题1
  */
@@ -62,6 +73,7 @@ function searchArticleByWord(query, response) {
   var question = query.text;
   if(question == undefined)
     question = "question";
+  question = question + extractParsed(query);
   es.search({
     index: config.es.index,
     type: 'news',
@@ -655,6 +667,7 @@ function searchTopicByWord(query, response) {
   var question = query.text;
   if(question == undefined)
     question = "question";
+  question = question + extractParsed(query);
   es.search({
     index: config.es.index,
     type: 'topic',
