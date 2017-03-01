@@ -81,8 +81,8 @@ function searchArticleByWord(query, response) {
         }
       },
       sort: [
-        {"news.time": "desc"},
-        "_score"
+        "_score",
+        {"news.time": "desc"}
       ],
       size: config.es.size
     }
@@ -582,8 +582,8 @@ function searchArticleByPer(query, response) {
         }
       },
       sort: [
-        {"news.time": "desc"},
-        "_score"
+        "_score",
+        {"news.time": "desc"}
       ],
       size: config.es.size
     }
