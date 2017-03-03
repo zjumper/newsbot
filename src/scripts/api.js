@@ -44,7 +44,7 @@ function extractPerson(text) {
 
 function extractProperty(text) {
   var words = segment.doSegment(text);
-  logger.info(words);
+  // logger.info(words);
   for(var i = 0; i < words.length; i ++) {
     var word = words[i];
     var p = _.propertyOf(config.propMap)(word.w);
@@ -120,7 +120,7 @@ function searchArticleByWord(query, response) {
       "type": "article-list",
       "data": articles
     };
-    // logger.info(ret);
+    logger.info(json.stringify(ret));
     response.status(200).json(ret);
   }, function(err) {
     logger.err(err.message);
@@ -168,7 +168,7 @@ function statisticTopicTrend(query, response) {
       // ]
     }
   }).then(function(searchResult) {
-    logger.info(searchResult.hits.total);
+    // logger.info(searchResult.hits.total);
     var hits = searchResult.hits.hits;
     var articles = [];
     for(var i = 0; i < hits.length; i ++) {
@@ -197,7 +197,7 @@ function statisticTopicTrend(query, response) {
       "type": "date-num-seq",
       "data": resort
     };
-    logger.info(ret);
+    logger.info(json.stringify(ret));
     response.status(200).json(ret);
   }, function(err) {
     logger.err(err.message);
@@ -264,7 +264,7 @@ function searchHotTopic(query, response) {
       "type": "topic-list",
       "data": topics
     };
-    logger.info(ret);
+    logger.info(json.stringify(ret));
     response.status(200).json(ret);
   }, function(err) {
     logger.err(err.message);
@@ -331,6 +331,7 @@ function searchHotPer(query, response) {
       "type": "per-list",
       "data": percount
     };
+    logger.info(json.stringify(ret));
     response.status(200).json(ret);
   }, function(err) {
     logger.err(err.message);
@@ -396,6 +397,7 @@ function searchHotOrg(query, response) {
       "type": "org-list",
       "data": percount
     };
+    logger.info(json.stringify(ret));
     response.status(200).json(ret);
   }, function(err) {
     logger.err(err.message);
@@ -461,6 +463,7 @@ function searchHotLoc(query, response) {
       "type": "loc-list",
       "data": percount
     };
+    logger.info(json.stringify(ret));
     response.status(200).json(ret);
   }, function(err) {
     logger.err(err.message);
@@ -508,7 +511,7 @@ function searchTopicByPer(query, response) {
       size: config.es.size
     }
   }).then(function(searchResult) {
-    logger.info(searchResult.hits.total);
+    // logger.info(searchResult.hits.total);
     var hits = searchResult.hits.hits;
     var topics = [];
     for(var i = 0; i < hits.length; i ++) {
@@ -536,7 +539,7 @@ function searchTopicByPer(query, response) {
       "type": "topic-list",
       "data": topics
     };
-    logger.info(ret);
+    logger.info(json.stringify(ret));
     response.status(200).json(ret);
   }, function(err) {
     logger.err(err.message);
@@ -631,6 +634,7 @@ function searchArticleByPer(query, response) {
       "data": articles
     };
     // logger.info(ret);
+    logger.info(json.stringify(ret));
     response.status(200).json(ret);
   }, function(err) {
     logger.err(err.message);
@@ -655,11 +659,20 @@ function searchPerson(query, response) {
   if(question == undefined)
     question = "question";
   var person = extractPerson(question);
-  logger.info(person);
+  // logger.info(person);
   var p = _.find(npc.people, function(p) {return p.fullname === person;});
-  if(p)
+  if(p) {
+    var ret = {
+      "query":{
+        "text": question
+      },
+      "status": 200,
+      "type": "person",
+      "data": p
+    }
+    logger.info(json.stringify(ret));
     response.status(200).json(p);
-  else {
+  } else {
     var ret = {
       "query":{
         "text": question
@@ -705,7 +718,7 @@ function searchTopicByWord(query, response) {
       size: config.es.size
     }
   }).then(function(searchResult) {
-    logger.info(searchResult.hits.total);
+    // logger.info(searchResult.hits.total);
     var hits = searchResult.hits.hits;
     var topics = [];
     for(var i = 0; i < hits.length; i ++) {
@@ -733,7 +746,7 @@ function searchTopicByWord(query, response) {
       "type": "topic-list",
       "data": topics
     };
-    logger.info(ret);
+    logger.info(json.stringify(ret));
     response.status(200).json(ret);
   }, function(err) {
     logger.err(err.message);
@@ -778,7 +791,7 @@ function statisticPer(query, response) {
       // logger.info(c);
       count.push(c);
     }
-    response.status(200).json({
+    var ret = {
       "query":
       {
         "text": question
@@ -786,7 +799,9 @@ function statisticPer(query, response) {
       "status": 200,
       "type": "per-statistic",
       "data": count
-    });
+    };
+    logger.info(json.stringify(ret));
+    response.status(200).json(ret);
   }
 }
 
@@ -811,7 +826,7 @@ function unsupported(query, response) {
 module.exports = (function () {
   return {
     ask: function(req, res) {
-      logger.info(req.body);
+      logger.info(json.stringify(req.body));
       // var answer = {};
       switch(req.body.catalog) {
         case 1:
