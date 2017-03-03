@@ -26,7 +26,7 @@ function extractArticle(source) {
   // logger.info(source.title);
   article.title = source.title;
   article.url = source.url;
-  article.time = source.time;
+  article.time = source.time.replace(/年|月/g, '-'); //fix some datetime string
   article.abstract = source.content.substring(0, 100);
   return article;
 }
@@ -103,6 +103,9 @@ function searchArticleByWord(query, response) {
     var articles = [];
     for(var i = 0; i < hits.length; i ++) {
       var article = extractArticle(hits[i]._source);
+      // logger.info(article);
+      if(article.time.match(/^\d+-\d+-\d+/) === null)
+        continue;
       // add score field to article data
       article.score = hits[i]._score;
       // logger.info(article);
@@ -140,16 +143,17 @@ function statisticTopicTrend(query, response) {
   var question = query.text;
   if(question == undefined)
     question = "question";
+  question = question + extractParsed(query);
   es.search({
     index: config.es.index,
-    type: 'topic',
+    type: 'news',
     // q: 'news_Title:理财'
     body: {
       query: {
         bool: {
           must: [{
             query_string: {
-              default_field: "topic.label", //'topic.label' in feature indeed
+              default_field: "news.title", //'topic.label' in feature indeed
               query: question
             }
           }],
@@ -157,16 +161,24 @@ function statisticTopicTrend(query, response) {
           should: []
         }
       },
-      sort: [
-        {"topic.updated": "desc"},
-        "_score"
-      ],
-      size: config.es.size
+      size: 2000
+      // sort: [
+      //   {"news.time": "desc"},
+      //   "_score"
+      // ]
     }
   }).then(function(searchResult) {
     logger.info(searchResult.hits.total);
-    var topic = searchResult.hits.hits[0]._source;
-    var articles = topic.articles; //'topic.articles'
+    var hits = searchResult.hits.hits;
+    var articles = [];
+    for(var i = 0; i < hits.length; i ++) {
+      var article = extractArticle(hits[i]._source);
+      if(article.time.match(/^\d+-\d+-\d+/) === null)
+        continue;
+      articles.push(article);
+    }
+    // var topic = searchResult.hits.hits[0]._source;
+    // var articles = topic.articles; //'topic.articles'
     // group articles by date
     var data = _.countBy(articles, function(news) { return news.time.substring(0,10); }); //{date: count}
     var resort = [];
