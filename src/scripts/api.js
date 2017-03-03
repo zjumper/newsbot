@@ -770,10 +770,12 @@ function statisticPer(query, response) {
     var group = _.groupBy(npc.people, p);
     var count = [];
     for(var p in group) {
+      if(p === 'null' || p === null)
+        continue;
       var c = {};
       c.name = p;
       c.count = group[p].length;
-      logger.info(c);
+      // logger.info(c);
       count.push(c);
     }
     response.status(200).json({
