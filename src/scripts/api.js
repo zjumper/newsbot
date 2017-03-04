@@ -93,8 +93,8 @@ function searchArticleByWord(query, response) {
         }
       },
       sort: [
-        "_score",
-        {"news.time": "desc"}
+        {"news.time": "desc"},
+        "_score"
       ],
       size: config.es.size
     }
@@ -229,6 +229,7 @@ function searchHotTopic(query, response) {
         match_all: {}
       },
       sort: [
+        {"topic.updated": "desc"},
         {"topic.count": "desc"},
         "_score"
       ],
@@ -296,6 +297,7 @@ function searchHotPer(query, response) {
         match_all: {}
       },
       sort: [
+        {"topic.updated": "desc"},
         {"topic.count": "desc"},
         "_score"
       ],
@@ -363,6 +365,7 @@ function searchHotOrg(query, response) {
         match_all: {}
       },
       sort: [
+        {"topic.updated": "desc"},
         {"topic.count": "desc"},
         "_score"
       ],
@@ -429,6 +432,7 @@ function searchHotLoc(query, response) {
         match_all: {}
       },
       sort: [
+        {"topic.updated": "desc"},
         {"topic.count": "desc"},
         "_score"
       ],
@@ -504,8 +508,8 @@ function searchTopicByPer(query, response) {
         }
       },
       sort: [
-        {"topic.count": "desc"},
         {"topic.updated": "desc"},
+        {"topic.count": "desc"},
         "_score"
       ],
       size: config.es.size
@@ -609,8 +613,8 @@ function searchArticleByPer(query, response) {
         }
       },
       sort: [
-        "_score",
-        {"news.time": "desc"}
+        {"news.time": "desc"},
+        "_score"
       ],
       size: config.es.size
     }
@@ -712,8 +716,8 @@ function searchTopicByWord(query, response) {
         }
       },
       sort: [
-        "_score",
-        {"topic.count": "desc"}
+        {"news.time": "desc"},
+        "_score"
       ],
       size: config.es.size
     }
