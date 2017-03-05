@@ -20,6 +20,11 @@ var logger = log4js.getLogger('normal');
 segment.useDefault();
 // logger.info(segment.doSegment("习近平在大会上的讲话大大地激励了同志们的热情。"));
 
+function filterStopword(text) {
+  var words = segment.doSegment(text, {simple: true,stripStopword: true});
+  return words.join(' ');
+}
+
 function extractArticle(source) {
   // logger.info(source);
   var article = {};
@@ -73,7 +78,7 @@ function searchArticleByWord(query, response) {
   var question = query.text;
   if(question == undefined)
     question = "question";
-  question = question + extractParsed(query);
+  question = filterStopword(question) + extractParsed(query);
   es.search({
     index: config.es.index,
     type: 'news',
@@ -143,7 +148,7 @@ function statisticTopicTrend(query, response) {
   var question = query.text;
   if(question == undefined)
     question = "question";
-  question = question + extractParsed(query);
+  question = filterStopword(question) + extractParsed(query);
   es.search({
     index: config.es.index,
     type: 'news',
@@ -696,7 +701,7 @@ function searchTopicByWord(query, response) {
   var question = query.text;
   if(question == undefined)
     question = "question";
-  question = question + extractParsed(query);
+  question = filterStopword(question) + extractParsed(query);
   es.search({
     index: config.es.index,
     type: 'topic',
@@ -716,7 +721,7 @@ function searchTopicByWord(query, response) {
         }
       },
       sort: [
-        {"news.time": "desc"},
+        // {"topic.updated": "desc"},
         "_score"
       ],
       size: config.es.size
