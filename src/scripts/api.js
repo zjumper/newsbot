@@ -260,6 +260,8 @@ function searchHotTopic(query, response) {
         a.abstract = "...";
         topic.articles.push(a);
       }
+      if(topic.label === undefined)
+        topic.label = articles[0].title;
       topics.push(topic);
     }
     var ret = {
@@ -488,7 +490,7 @@ function searchHotLoc(query, response) {
 }
 
 /**
- * 问题7
+ * 问题7,15
  */
 function searchTopicByPer(query, response) {
   logger.info('searchTopicByPer');
@@ -538,6 +540,8 @@ function searchTopicByPer(query, response) {
         a.abstract = "...";
         topic.articles.push(a);
       }
+      if(topic.label === undefined)
+        topic.label = articles[0].title;
       topics.push(topic);
     }
     var ret = {
